@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "jspsych-plus"
+version = "0.0.1"
+description = "A full stack framework for jsPsych development."
+authors = ["Shaobin Jiang <shaobin-jiang@outlook.com>"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/Shaobin-Jiang/jspsych-plus"
+documentation = "https://github.com/Shaobin-Jiang/jspsych-plus/docs/"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+httpx = "^0.27.0"
+starlette = "^0.37.2"
+uvicorn = {extras = ["standard"], version = "^0.27.1"}
+
+[tool.poetry.scripts]
+jspsych = "jspsych_plus.management.management:exec_from_cmd"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
