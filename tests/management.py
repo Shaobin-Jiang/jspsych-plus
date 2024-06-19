@@ -1,5 +1,7 @@
-import io
+import os
+import shutil
 import sys
+import tempfile
 
 from typing import Callable
 
@@ -7,17 +9,17 @@ import unittest
 from unittest.mock import patch
 
 from jspsych_plus.management import management
+from utils import ExtendedTestCase
 
 
-class TestManagement(unittest.TestCase):
+class TestManagement(ExtendedTestCase):
     def test_help(self):
         """
-        Tests whether these commands:
+        Tests whether these commands correctly prints the help info:
         - jspsych help
         - jspsych -h
         - jspsych
         - jspsych invalid-command
-        corrects print the help info
         """
         help_msg: str = self.redirect_stdout(management.print_help)
 
@@ -26,26 +28,66 @@ class TestManagement(unittest.TestCase):
         self.assertPrints(self.mock_cmd_call([]), help_msg)
         self.assertPrints(self.mock_cmd_call(["invalid-command"]), help_msg)
 
-    def assertPrints(self, func: Callable, content: str, msg: str = "") -> None:
+    def test_new_project(self):
         """
-        Checks if func prints content.
+        Tests whether these commands would create projects properly:
+        - jspsych new: creates a project named "jspsych-project"
+        - jspsych new test1: creates a project named "test1"
+        - jspsych new test2 [relative-path]: creates project in the right spot
+        - jspsych new test3 [absolute-path]: creates project in the right spot
+        - jspsych new test4 [nonempty-path]: does not create a project
         """
-        self.assertEqual(self.redirect_stdout(func), content, msg)
+        test_dir: str = tempfile.mkdtemp(
+            dir=os.path.dirname(__file__),
+            prefix="new-project-test",
+        )
 
-    def redirect_stdout(self, func: Callable) -> str:
-        """
-        Redirect stdout of func to str.
-        """
-        buffer = io.StringIO()
+        template_dir: str = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "jspsych_plus",
+                "template",
+            )
+        )
 
-        sys.stdout = buffer
+        cwd: str = os.getcwd()
+        os.chdir(test_dir)
 
-        func()
-        print_output: str = buffer.getvalue()
+        try:
+            self.mock_cmd_call(["new"])()
+            self.assertHasSameStructure(
+                os.path.join(test_dir, "jspsych-project"),
+                template_dir,
+            )
 
-        sys.stdout = sys.__stdout__
+            self.mock_cmd_call(["new", "test1"])()
+            self.assertHasSameStructure(
+                os.path.join(test_dir, "test1"),
+                template_dir,
+            )
 
-        return print_output
+            self.mock_cmd_call(["new", "test2", "./proj/target"])()
+            self.assertHasSameStructure(
+                os.path.join(test_dir, "proj/target", "test2"),
+                template_dir,
+            )
+
+            abs_path = os.path.join(test_dir, "abs_path")
+            self.mock_cmd_call(["new", "test3", abs_path])()
+            self.assertHasSameStructure(
+                os.path.join(abs_path, "test3"),
+                template_dir,
+            )
+
+            # No project should be created as <test_dir>/abs_path is not empty
+            self.assertPrintBeginsWith(
+                self.mock_cmd_call(["new", "abs_path", test_dir]),
+                "Cannot create project",
+            )
+        finally:
+            os.chdir(cwd)
+            shutil.rmtree(test_dir)
 
     def mock_cmd_call(self, argv: list[str]) -> Callable:
         """
