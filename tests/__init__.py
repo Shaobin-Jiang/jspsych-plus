@@ -1,5 +1,6 @@
 import unittest
 from management import TestManagement
+from api import TestApi
 
 if __name__ == "__main__":
     suite = unittest.TestSuite()
@@ -9,5 +10,6 @@ if __name__ == "__main__":
         suite.addTests(loader.loadTestsFromTestCase(case))
 
     add_test(TestManagement)
+    add_test(TestApi)
 
     unittest.TextTestRunner().run(suite)
