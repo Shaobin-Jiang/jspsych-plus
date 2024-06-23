@@ -1,11 +1,14 @@
+import inspect
+import os
 from typing import Any, Callable, Mapping, Sequence
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.routing import BaseRoute, WebSocketRoute
+from starlette.routing import BaseRoute, Route, WebSocketRoute
 from starlette.types import ExceptionHandler
 
 from ..api.channel import VarPool, establish_var_channel
+from ..api.static import static
 
 
 class Jspsych(Starlette):
@@ -48,10 +51,17 @@ class Jspsych(Starlette):
             on_shutdown=on_shutdown,
         )
 
+        self.static_dir: str = os.path.join(
+            os.path.dirname(inspect.stack()[1].filename), "pages"
+        )
+
         self.var_pool = VarPool()
         self._add_default_route()
 
     def _add_default_route(self) -> None:
-        self.router.routes.append(
-            WebSocketRoute("/_channel", establish_var_channel),
+        self.router.routes.extend(
+            [
+                WebSocketRoute("/_channel", establish_var_channel),
+                Route("/{file:path}", static),
+            ]
         )
