@@ -22,9 +22,7 @@ class TestApi(ExtendedTestCase):
             # the channel forwards the current variable pool
             socket_1.receive_json()
 
-            asyncio.get_event_loop().run_until_complete(
-                jspsych.var_pool.set("v1", 123)
-            )
+            asyncio.get_event_loop().run_until_complete(jspsych.var_pool.set("v1", 123))
             self.assertDictEqual(socket_1.receive_json(), {"v1": 123})
 
             with client_2.websocket_connect(url) as socket_2:
@@ -37,15 +35,27 @@ class TestApi(ExtendedTestCase):
                 self.assertDictEqual(socket_2.receive_json(), {"v2": "aaa"})
 
             # tests whether using a callable to modify a variable works
-            asyncio.get_event_loop().run_until_complete(
-                jspsych.var_pool.set("v3", [1])
-            )
+            asyncio.get_event_loop().run_until_complete(jspsych.var_pool.set("v3", [1]))
             socket_1.receive_json()
 
             asyncio.get_event_loop().run_until_complete(
                 jspsych.var_pool.set("v3", func=lambda x: x.append(2))
             )
             self.assertDictEqual(socket_1.receive_json(), {"v3": [1, 2]})
+
+    def test_static(self):
+        """
+        Tests whether static files are fetched properly.
+        """
+        jspsych = Jspsych()
+        client = TestClient(jspsych)
+
+        self.assertEqual(client.get("/").status_code, 200)
+        self.assertEqual(client.get("/index").status_code, 200)
+        self.assertEqual(client.get("/index.html").status_code, 200)
+
+        self.assertEqual(client.get("/scripts/main.js").status_code, 200)
+        self.assertEqual(client.get("/123").status_code, 404)
 
 
 if __name__ == "__main__":
