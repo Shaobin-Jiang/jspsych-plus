@@ -1,4 +1,6 @@
 import asyncio
+import json
+import os
 import unittest
 
 from jspsych_plus.applications.jspsych import Jspsych
@@ -56,6 +58,56 @@ class TestApi(ExtendedTestCase):
 
         self.assertEqual(client.get("/scripts/main.js").status_code, 200)
         self.assertEqual(client.get("/123").status_code, 404)
+
+    def test_fs(self):
+        """
+        Tests various features of the "file system" works properly.
+        """
+        jspsych = Jspsych()
+        client = TestClient(jspsych)
+
+        jspsych.data_dir = jspsych.static_dir
+
+        # The query param is actually ?path=1/2 here, but in a normal url, the
+        # slash should be converted to %2F
+        response_1 = client.get("/fs/tree?path=1%2F2")
+        self.assertEqual(response_1.status_code, 403)
+        self.assertEqual(response_1.content.decode(), "Non existent path")
+
+        response_2 = client.get("/fs/tree?path=%2F")
+        self.assertEqual(response_2.status_code, 200)
+
+        correct_result = []
+        for root, dirs, files in os.walk(jspsych.data_dir):
+            correct_result.append([root, dirs, files])
+
+        self.assertEqual(
+            response_2.content.decode().replace('\\"', '"'),
+            f'"{json.dumps(correct_result)}"',
+        )
+
+        response_3 = client.get("/fs/tree?path=..")
+        self.assertEqual(response_3.status_code, 403)
+        self.assertEqual(response_3.content.decode(), "Permission denied")
+
+        with open(os.path.join(jspsych.data_dir, "index.html"), mode="r") as fid:
+            content = fid.read()
+            response_4 = client.get("/fs/read?path=%2Findex.html")
+            self.assertEqual(response_4.content.decode(), content)
+
+        written_content: str = "Hello world"
+        client.post(
+            "/fs/write",
+            content=json.dumps({"path": "temp", "content": written_content}),
+        )
+        written_file: str = os.path.join(jspsych.data_dir, "temp")
+        try:
+            self.assertTrue(os.path.exists(written_file))
+            self.assertTrue(os.path.isfile(written_file))
+            with open(written_file, mode="r") as fid:
+                self.assertEqual(fid.read(), written_content)
+        finally:
+            os.remove(written_file)
 
 
 if __name__ == "__main__":
