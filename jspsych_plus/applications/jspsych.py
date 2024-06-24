@@ -4,11 +4,12 @@ from typing import Any, Callable, Mapping, Sequence
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.routing import BaseRoute, Route, WebSocketRoute
+from starlette.routing import BaseRoute, Mount, Route, WebSocketRoute
 from starlette.types import ExceptionHandler
 
 from ..api.channel import VarPool, establish_var_channel
 from ..api.static import static
+from ..api.fs import read_file, tree, write_file
 
 
 class Jspsych(Starlette):
@@ -51,9 +52,9 @@ class Jspsych(Starlette):
             on_shutdown=on_shutdown,
         )
 
-        self.static_dir: str = os.path.join(
-            os.path.dirname(inspect.stack()[1].filename), "pages"
-        )
+        self._base_dir: str = os.path.dirname(inspect.stack()[1].filename)
+        self.data_dir: str = os.path.join(self._base_dir, "data")
+        self.static_dir: str = os.path.join(self._base_dir, "pages")
 
         self.var_pool = VarPool()
         self._add_default_route()
@@ -62,6 +63,11 @@ class Jspsych(Starlette):
         self.router.routes.extend(
             [
                 WebSocketRoute("/_channel", establish_var_channel),
-                Route("/{file:path}", static),
+                Mount("/fs", routes=[
+                    Route("/read", read_file, methods=["GET"]),
+                    Route("/write", write_file, methods=["POST"]),
+                    Route("/tree", tree, methods=["GET"]),
+                ]),
+                Route("/{file:path}", static, methods=["GET"]),
             ]
         )
