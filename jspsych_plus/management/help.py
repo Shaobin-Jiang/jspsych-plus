@@ -23,11 +23,11 @@ def print_help(commands: Dict[str, str], *_) -> None:
         "",
     ]
 
-    max_cmd_len: int = 7 # same length as "Command"
+    max_cmd_len: int = 7  # same length as "Command"
     for command in commands:
         entry: str = f"jspsych {command}"
         max_cmd_len = max(len(entry), max_cmd_len)
-    max_cmd_len += 4 # leave 4 blank spaces after
+    max_cmd_len += 4  # leave 4 blank spaces after
 
     help_str_list.append(f"Command{' ' * (max_cmd_len - 7)}Description")
     help_str_list.append(f"-------{' ' * (max_cmd_len - 7)}-----------")
